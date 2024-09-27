@@ -36,7 +36,7 @@ public:
     void createDefaultConfig();
 
     // Read a configuration value
-    String readConfig(String key);
+    String readConfig(String key); 
 
     // Write a configuration value
     void writeConfig(String key, String value);
