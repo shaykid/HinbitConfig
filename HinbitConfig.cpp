@@ -1,12 +1,22 @@
 #include "HinbitConfig.h"
 
+// Define the filename for the configuration JSON file
+#define CONFIG_FILENAME "/config.json"
+
 // UUIDs for BLE
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 // Initialize BLE
 void HinbitConfig::initializeBLE() {
-    BLEDevice::init("HinbitESP_" + String((uint32_t)ESP.getEfuseMac(), HEX));  // Use unique device name
+    // Get the device name from the config
+    String deviceName = readConfig("DEVICE_NAME");
+    if (deviceName == "") {
+        deviceName = "HINBIT_DEVICE";  // Default device name
+    }
+    
+    // Initialize BLE with the device name from config.json + MAC address
+    BLEDevice::init(deviceName + "_" + String((uint32_t)ESP.getEfuseMac(), HEX));  
     pServer = BLEDevice::createServer();
     
     BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -118,13 +128,13 @@ String HinbitConfig::getConfigValue(String key) {
 // List all config keys
 String HinbitConfig::listConfigKeys() {
     // Check if config.json exists in LittleFS
-    if (!LittleFS.exists("/config.json")) {
+    if (!LittleFS.exists(CONFIG_FILENAME)) {
         Serial.println("config.json does not exist.");
         return "";
     }
 
     // Open config.json and load into a DynamicJsonDocument
-    File file = LittleFS.open("/config.json", "r");
+    File file = LittleFS.open(CONFIG_FILENAME, "r");
     DynamicJsonDocument doc(4096);
     deserializeJson(doc, file);
     file.close();
@@ -171,7 +181,7 @@ void HinbitConfig::formatLittleFS() {
 
 // Start config, create default if missing
 bool HinbitConfig::startConfig() {
-    if (!LittleFS.exists("/config.json")) {
+    if (!LittleFS.exists(CONFIG_FILENAME)) {
         Serial.println("config.json not found. Creating a default one.");
         createDefaultConfig();
         printConfig();
@@ -191,28 +201,22 @@ void HinbitConfig::createDefaultConfig() {
     doc["WIFI"]["SSID"] = "MySSID";
     doc["WIFI"]["PASS"] = "MyPassword";
     doc["LAST_DATE"] = "01-10-1971";
-    doc["CITY"] = "רעננה";
-    doc["FILES_PATH"] = "https://hinbit.com/HalachaTimes/";
-    doc["TIME_ZONE"] = "Asia/Jerusalem";
-    doc["UPDATE_FILES"] = "true";
-    doc["UPDATE_TIME"] = "true";
-    doc["SUNRISE_SECONDS_ADJUST"] = 30;
     doc["DEVICE_NAME"] = "HINBIT_DEVICE";
-    doc["CODE_VERSION"] = "2.4";
+    doc["CODE_VERSION"] = "1.6";
 
-    File file = LittleFS.open("/config.json", "w");
+    File file = LittleFS.open(CONFIG_FILENAME, "w");
     serializeJson(doc, file);
     file.close();
 }
 
 // Read configuration value based on key
 String HinbitConfig::readConfig(String key) {
-    if (!LittleFS.exists("/config.json")) {
+    if (!LittleFS.exists(CONFIG_FILENAME)) {
         Serial.println("config.json does not exist.");
         return "";
     }
 
-    File file = LittleFS.open("/config.json", "r");
+    File file = LittleFS.open(CONFIG_FILENAME, "r");
     DynamicJsonDocument doc(4096);
     deserializeJson(doc, file);
     file.close();
@@ -230,12 +234,12 @@ String HinbitConfig::readConfig(String key) {
 
 // Write configuration value to key
 void HinbitConfig::writeConfig(String key, String value) {
-    if (!LittleFS.exists("/config.json")) {
+    if (!LittleFS.exists(CONFIG_FILENAME)) {
         Serial.println("config.json does not exist.");
         return;
     }
 
-    File file = LittleFS.open("/config.json", "r");
+    File file = LittleFS.open(CONFIG_FILENAME, "r");
     DynamicJsonDocument doc(4096);
     deserializeJson(doc, file);
     file.close();
@@ -244,19 +248,19 @@ void HinbitConfig::writeConfig(String key, String value) {
     nestedKey.replace("-", ".");
     doc[nestedKey] = value;
 
-    file = LittleFS.open("/config.json", "w");
+    file = LittleFS.open(CONFIG_FILENAME, "w");
     serializeJson(doc, file);
     file.close();
 }
 
 // Print configuration or specific key
 void HinbitConfig::printConfig(String key) {
-    if (!LittleFS.exists("/config.json")) {
+    if (!LittleFS.exists(CONFIG_FILENAME)) {
         Serial.println("config.json does not exist.");
         return;
     }
 
-    File file = LittleFS.open("/config.json", "r");
+    File file = LittleFS.open(CONFIG_FILENAME, "r");
     DynamicJsonDocument doc(4096);
     deserializeJson(doc, file);
     file.close();
